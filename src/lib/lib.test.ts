@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * Tests for the pure logic in src/lib. Run with:  npm test
  * Uses Node's built-in test runner (no extra framework).
@@ -19,7 +20,7 @@ const route = [
 const KM_PER_DEG = 111.2;
 const near = (a: number, b: number, tol: number) => assert.ok(Math.abs(a - b) <= tol, `${a} not within ${tol} of ${b}`);
 
-test('distance: one degree of latitude ≈ 111 km', () => {
+test('distance: one degree of latitude β‰ 111 km', () => {
   near(distance(route[0], route[2]) / 1000, KM_PER_DEG, 0.5);
 });
 
@@ -76,7 +77,7 @@ test('detectLeftBehind: car 6 km behind trips the distance rule', () => {
 
 test('detectLeftBehind: slow traffic trips the time rule before the distance rule', () => {
   const cum = cumulativeDistances(route);
-  // 4 km gap (under 5 km) but both crawling at 5 m/s → 13 min > 10 min
+  // 4 km gap (under 5 km) but both crawling at 5 m/s β†’ 13 min > 10 min
   const res = detectLeftBehind(
     [
       { userId: 'lead', position: pointAlongRoute(route, 50000, cum), speed: 5, offRouteSince: null },
@@ -89,7 +90,7 @@ test('detectLeftBehind: slow traffic trips the time rule before the distance rul
 
 test('detectLeftBehind: same 4 km gap at motorway speed is fine', () => {
   const cum = cumulativeDistances(route);
-  // 4 km at 30 m/s = 2.2 min → no alert
+  // 4 km at 30 m/s = 2.2 min β†’ no alert
   const res = detectLeftBehind(
     [
       { userId: 'lead', position: pointAlongRoute(route, 50000, cum), speed: 30, offRouteSince: null },
