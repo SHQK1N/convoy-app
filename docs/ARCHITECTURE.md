@@ -16,7 +16,7 @@ Product rules live in [SPEC.md](SPEC.md).
 | "Next stop" search | **Overpass API** (OpenStreetMap) | Free; finds fuel / rest areas along the route |
 | Background GPS | `expo-location` + `expo-task-manager` | Keeps sharing while the phone is locked or in another app |
 | Spoken alerts | `expo-speech` | On-device text-to-speech, free |
-| Notifications | `expo-notifications` (local) | Banner + sound when the app is in the background |
+| Notifications | `expo-notifications` + Expo push service | Trip invites and friend requests reach closed apps. The **database** sends them (trigger → `pg_net` → Expo push API), so no extra server is needed. Tokens live in `push_tokens`, readable only by their owner |
 
 ## Data flow
 

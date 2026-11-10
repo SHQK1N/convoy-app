@@ -10,6 +10,7 @@
 import type { Session } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { getProfile, Profile } from '../services/auth';
+import { registerForPush } from '../services/push';
 import { supabase, supabaseConfigured } from '../services/supabase';
 
 type AuthState = {
@@ -61,6 +62,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // Once signed in, register this phone for push (no-op in Expo Go / web — see services/push.ts).
+  const userId = session?.user.id;
+  useEffect(() => {
+    if (!userId) return;
+    registerForPush(userId).then((why) => {
+      if (why && __DEV__) console.log('[push] not registered:', why);
+    });
+  }, [userId]);
 
   return (
     <AuthContext.Provider value={{ session, profile, loading, refreshProfile: () => loadProfile(session) }}>

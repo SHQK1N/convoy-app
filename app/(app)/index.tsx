@@ -1,29 +1,22 @@
 /**
- * Home / Friends screen.
- * Sections: requests to me (accept / decline), my friends, requests I've sent (cancel).
- * Trips will be added to this screen in the next milestone.
+ * Home screen.
+ * Top: trip invites + my trip / "Start a trip" (src/components/TripCard.tsx).
+ * Below: friend requests to me (accept / decline), my friends, requests I've sent (cancel).
  */
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Platform, RefreshControl, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { confirm } from '../../src/components/confirm';
+import { TripCard } from '../../src/components/TripCard';
 import { Avatar, Button, ErrorText, SectionTitle } from '../../src/components/ui';
 import { space, useColours } from '../../src/components/theme';
 import { signOut } from '../../src/services/auth';
 import { acceptRequest, FriendEntry, removeFriendship } from '../../src/services/friends';
+import { stopTracking } from '../../src/services/location';
+import { unregisterPush } from '../../src/services/push';
 import { useAuth } from '../../src/state/AuthProvider';
 import { useFriends } from '../../src/state/useFriends';
-
-/** Yes/no prompt that also works on web (Alert.alert with buttons does nothing there). */
-function confirm(title: string, message: string): Promise<boolean> {
-  if (Platform.OS === 'web') return Promise.resolve(window.confirm(`${title}\n\n${message}`));
-  return new Promise((resolve) =>
-    Alert.alert(title, message, [
-      { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-      { text: 'OK', style: 'destructive', onPress: () => resolve(true) },
-    ]),
-  );
-}
 
 export default function Home() {
   const colours = useColours();
@@ -57,7 +50,7 @@ export default function Home() {
     rows.push({ kind: 'header', title: `Requests (${incoming.length})` });
     incoming.forEach((entry) => rows.push({ kind: 'entry', entry }));
   }
-  rows.push({ kind: 'header', title: `Friends (${friends.length})` });
+  rows.push({ kind: 'header', title: `My friends (${friends.length})` });
   if (friends.length) friends.forEach((entry) => rows.push({ kind: 'entry', entry }));
   else rows.push({ kind: 'empty', text: 'No friends yet. Tap “Add friend” and search by username.' });
   if (outgoing.length) {
@@ -102,23 +95,35 @@ export default function Home() {
     <SafeAreaView style={{ flex: 1 }}>
       <View style={{ paddingHorizontal: space.lg, paddingTop: space.md, flexDirection: 'row', alignItems: 'center' }}>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 28, fontWeight: '800', color: colours.text }}>Friends</Text>
+          <Text style={{ fontSize: 28, fontWeight: '800', color: colours.brand }}>Convoy</Text>
           {profile && <Text style={{ color: colours.textMuted }}>Signed in as @{profile.username}</Text>}
         </View>
-        <Button small variant="secondary" title="Sign out" onPress={signOut} />
-      </View>
-
-      <View style={{ paddingHorizontal: space.lg, marginTop: space.md }}>
-        <Button title="+ Add friend" onPress={() => router.push('/add-friend')} />
-        <View style={{ marginTop: space.md }}>
-          <ErrorText>{error || actionError}</ErrorText>
-        </View>
+        <Button
+          small
+          variant="secondary"
+          title="Sign out"
+          onPress={async () => {
+            if (me) await unregisterPush(me); // stop pushes to this phone
+            await stopTracking(); // stop sharing location
+            await signOut();
+          }}
+        />
       </View>
 
       {loading ? (
         <ActivityIndicator color={colours.brand} style={{ marginTop: space.xl }} />
       ) : (
         <FlatList
+          ListHeaderComponent={
+            <View>
+              <TripCard />
+              <SectionTitle>Friends</SectionTitle>
+              <Button variant="secondary" title="+ Add friend" onPress={() => router.push('/add-friend')} />
+              <View style={{ marginTop: space.sm }}>
+                <ErrorText>{error || actionError}</ErrorText>
+              </View>
+            </View>
+          }
           data={rows}
           keyExtractor={(r, i) => (r.kind === 'entry' ? r.entry.profile.id : `${r.kind}-${i}`)}
           contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xl }}

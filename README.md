@@ -14,13 +14,24 @@ alert for all, and a one-tap **Halt** tells the whole group to pull over at the 
 
 - `src/config.ts` — every tunable number (car cap, thresholds, intervals). Start here to tweak behaviour.
 - `src/lib/` — pure logic (geo maths, offline prediction, left-behind rules, friendship helpers), unit-tested.
-- `src/services/` — talks to Supabase (`supabase.ts` client, `auth.ts`, `friends.ts`). Routing, location and speech come later.
-- `src/state/` — who is signed in (`AuthProvider`) and the live friends list (`useFriends`).
-- `src/components/` — theme colours (`theme.ts`) and shared UI pieces (`ui.tsx`).
+- `src/services/` — talks to the outside world: `supabase.ts` client, `auth.ts`, `friends.ts`, `trips.ts`,
+  `geocode.ts` (place search), `push.ts` (push notification registration), `route.ts` (driving route),
+  `live.ts` (live positions channel), `location.ts` (GPS, incl. background).
+- `src/components/map/` — the map: `TripMap.tsx` (phones, react-native-maps) and `TripMap.web.tsx` (browser, Leaflet).
+- `src/lib/simulate.ts` — fake convoy for testing (used by the map demo and the "Test convoy" button).
+- `src/state/` — who is signed in (`AuthProvider`), live friends list (`useFriends`), my trip + invites (`useTrip`).
+- `src/components/` — theme colours (`theme.ts`), shared UI pieces (`ui.tsx`), `TripCard`, `confirm`.
 - `app/` — screens (Expo Router: one file = one screen).
   - `_layout.tsx` — decides signed-in vs signed-out, shows "not configured" if keys are missing.
   - `(auth)/` — sign-in, sign-up.
-  - `(app)/` — friends (home), add friend. Trips come next.
+  - `(app)/index.tsx` — home: trip invites, my trip / Start a trip, friends.
+  - `(app)/trip.tsx` — trip lobby: destination, cars, invite friends, leave.
+  - `(app)/set-destination.tsx` — leader searches and picks the destination.
+  - `(app)/add-friend.tsx` — search users and send friend requests.
+  - `(app)/drive.tsx` — the live map for the current trip.
+  - `(auth)/demo.tsx` — map demo with a simulated convoy (development only, no account needed).
+- `app.config.ts` — adds the Google Maps key (from .env) and location permissions to app.json.
+- `public/` — web-only files (page template, favicon). `scripts/make_icons.py` — regenerates all icons.
 
 ## Commands
 
@@ -36,8 +47,8 @@ Background GPS (later milestones) needs a development build, not Expo Go — see
 
 1. ✅ Spec, architecture, database schema, core logic + tests
 2. ✅ Accounts + friends list (needs Supabase keys to use — see SETUP.md)
-3. ⏳ Create trip, invite friends, leave lobby / leader hand-over
-4. ⏳ Live map: dots with names, shared route, background GPS
+3. ✅ Create trip, invite friends, set destination, leave lobby / leader hand-over, push notifications (run `0004_trips_and_push.sql`; push needs the dev build)
+4. ✅ Live map: dots with names, shared route, background GPS, offline cars predicted + faded, test convoy (run `0005_live_positions.sql`; phones need the dev build + Google Maps key). Try it on the PC: sign-in screen → **Map demo (testing)**
 5. ⏳ Left-behind alerts + offline prediction on the map
 6. ⏳ Halt / Slow down / I'm OK buttons, next-stop search, spoken reminders
 7. ⏳ Dev builds on Android + iPhone, test drive with the group

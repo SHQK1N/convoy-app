@@ -26,7 +26,13 @@
       "themeColor": "#FF4D26"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "color": "#FF4D26"
+        }
+      ]
     ],
     "scheme": "convoy"
   }

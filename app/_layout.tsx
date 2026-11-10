@@ -12,6 +12,8 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { space, useColours } from '../src/components/theme';
+// Registers the background location task at start-up (must happen before any screen renders).
+import '../src/services/location';
 import { supabaseConfigured } from '../src/services/supabase';
 import { AuthProvider, useAuth } from '../src/state/AuthProvider';
 

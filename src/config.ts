@@ -24,7 +24,7 @@ export const CONFIG = {
   /** How often each phone saves its last position to the database, in ms. */
   persistIntervalMs: 30000,
   /** A car with no update for this long is treated as offline (drawn faded, position predicted). */
-  offlineAfterMs: 20000,
+  offlineAfterMs: 15000,
   /** Stop predicting an offline car's position after this long (it may have stopped). */
   maxPredictionMs: 15 * 60 * 1000,
 

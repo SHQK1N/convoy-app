@@ -21,14 +21,27 @@ Things only the owner can do (accounts, keys). Do them once.
 
 1. Google Cloud Console → new project → enable **Maps SDK for Android** → create an API key.
 2. Restrict it to Android apps (package name `app.convoy.dev` from `app.json`).
-3. Put it in `.env` as `GOOGLE_MAPS_ANDROID_KEY`.
+3. Put it in `.env` as `GOOGLE_MAPS_ANDROID_KEY` (read by `app.config.ts` at build time).
+   Without it the Android map is blank. iPhone uses Apple Maps and needs no key.
 
 ## 4. Expo account (cloud builds) — free
 
 1. Create an account at expo.dev.
 2. In the project folder: `npx eas-cli login`, then `npx eas-cli build:configure`.
 
-## 5. Testing on phones
+## 5. Push notifications (needed before the first dev build)
+
+The database sends pushes through Expo's free push service (see `0004_trips_and_push.sql`). The app needs:
+
+1. An EAS project ID: run `npx eas-cli init` in the project folder — it adds `extra.eas.projectId` to `app.json`.
+2. Android: a Firebase project (free) → add an Android app with package `app.convoy.dev` → download
+   `google-services.json` into the project folder → in `app.json` set `"android": { "googleServicesFile": "./google-services.json" }`.
+   Then upload the FCM key to Expo: `npx eas-cli credentials` → Android → Push Notifications (FCM V1).
+3. iPhone (later): EAS sets up the Apple push key automatically during the first iOS build.
+
+Push does **not** work in Expo Go on Android, or on web — the app just skips it there.
+
+## 6. Testing on phones
 
 - **Screens only (now):** `npx expo start`, scan the QR code with the **Expo Go** app. Sign-up and friends work here.
 - **Android dev build:** `npx eas-cli build --profile development --platform android` → install the APK link on each phone.

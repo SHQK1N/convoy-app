@@ -46,6 +46,11 @@ export default function SignIn() {
               Create an account
             </Link>
           </View>
+          {__DEV__ && (
+            <Link href="/demo" style={{ color: colours.textMuted, textAlign: 'center', marginTop: space.lg, fontSize: 15 }}>
+              Map demo (testing)
+            </Link>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
