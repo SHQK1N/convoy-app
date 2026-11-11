@@ -3,6 +3,7 @@
  * Shows the current relationship next to each result so you can't double-request.
  */
 import { useRouter } from 'expo-router';
+import { goBack } from '../../src/components/goBack';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -59,7 +60,7 @@ export default function AddFriend() {
       <View style={{ padding: space.lg, paddingBottom: 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.md }}>
           <Text style={{ flex: 1, fontSize: 28, fontWeight: '800', color: colours.text }}>Add friend</Text>
-          <Button small variant="secondary" title="Done" onPress={() => router.back()} />
+          <Button small variant="secondary" title="Done" onPress={() => goBack('/')} />
         </View>
         <Field label="Search by username" value={query} onChangeText={setQuery} placeholder="e.g. nikos" autoFocus />
         <ErrorText>{error}</ErrorText>

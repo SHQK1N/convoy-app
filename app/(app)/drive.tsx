@@ -7,10 +7,11 @@
  * Leader can recalculate (e.g. after changing the destination).
  *
  * "Test convoy" (development builds / web only) adds simulated cars — see src/lib/simulate.ts.
- * Alerts and action buttons (Halt, Slow down, I'm OK) come in milestones 5–6.
+ * Alerts (useAlerts) and driver buttons: Break / Slow down / I'm OK (useHalt, DriveControls).
  */
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { goBack } from '../../src/components/goBack';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TripMap from '../../src/components/map/TripMap';
@@ -19,7 +20,15 @@ import { space, useColours } from '../../src/components/theme';
 import { Button, ErrorText } from '../../src/components/ui';
 import { getCurrentPosition } from '../../src/services/location';
 import { fetchRoute } from '../../src/services/route';
-import { saveRoute } from '../../src/services/trips';
+import { saveRoute, setHalt } from '../../src/services/trips';
+import { ActionBar, HaltBanner } from '../../src/components/DriveControls';
+import type { TripEvent } from '../../src/services/live';
+import { useAuth } from '../../src/state/AuthProvider';
+import { useHalt } from '../../src/state/useHalt';
+import { useVoiceMuted } from '../../src/state/voice';
+import { useButtonLimits } from '../../src/state/useButtonLimits';
+import { NavBanner } from '../../src/components/NavBanner';
+import { useNavigation } from '../../src/state/useNavigation';
 import { useConvoy } from '../../src/state/useConvoy';
 import { AlertBanners } from '../../src/components/AlertBanners';
 import { DEFAULT_TRIP_SETTINGS } from '../../src/config';
@@ -40,11 +49,44 @@ export default function Drive() {
   const [routeBusy, setRouteBusy] = useState(false);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const { cars, route, trackingNote, myFix } = useConvoy(trip, me, simulate);
+  const { profile } = useAuth();
+  const [muted, setMuted] = useVoiceMuted();
+  // Group messages from other phones. Handled below once notify/snooze exist (ref breaks the cycle).
+  const onEventRef = useRef<(e: TripEvent) => void>(() => {});
+  const { cars, route, trackingNote, myFix, sendEvent } = useConvoy(trip, me, simulate, (e) => onEventRef.current(e));
   // Follow me: camera stays on my car. Dragging the map or "Fit all" turns it off.
   const [following, setFollowing] = useState(true);
   const myCar = cars.find((car) => car.isMe);
-  const { alerts, dismiss, muted, setMuted } = useAlerts(cars, route, trip?.settings ?? DEFAULT_TRIP_SETTINGS);
+  // Turn-by-turn for my car (replaces Google Maps): next turn, voice prompts, join-the-route leg.
+  const nav = useNavigation(trip?.route, myCar);
+  const { alerts, dismiss, notify, snoozeCar } = useAlerts(cars, route, trip?.settings ?? DEFAULT_TRIP_SETTINGS, !!trip?.halt);
+  const limits = useButtonLimits();
+  onEventRef.current = (e) => {
+    if (!limits.acceptIncoming(e)) return; // same person repeating the button: ignore
+    if (e.type === 'slow') notify(`${e.byName} asks everyone to slow down.`, true);
+    if (e.type === 'ok') {
+      snoozeCar(e.by);
+      notify(`${e.byName} says they're OK.`);
+    }
+  };
+  const brk = useHalt({
+    halt: trip?.halt ?? null,
+    saveHalt: async (h) => {
+      if (!trip) return;
+      await setHalt(trip.id, h);
+      await reload();
+    },
+    cars,
+    route,
+    me: me && profile ? { id: me, name: profile.display_name } : null,
+    notify,
+  });
+  const sendGroup = (type: TripEvent['type'], confirmText: string) => {
+    if (!me || !profile) return;
+    sendEvent({ type, by: me, byName: profile.display_name, at: Date.now() });
+    limits.markUsed(type);
+    notify(confirmText);
+  };
 
   const isLeader = !!trip && trip.leaderId === me;
 
@@ -102,14 +144,29 @@ export default function Drive() {
         destination={trip.destination}
         cars={cars}
         fitKey={fitKey}
+        stop={trip.halt?.stop ?? null}
+        joinLine={nav.joinLine}
         follow={following && myCar ? myCar.position : null}
         onUserMove={() => setFollowing(false)}
       />
 
       {/* Top bar */}
       <SafeAreaView edges={['top']} style={{ position: 'absolute', top: 0, left: 0, right: 0 }} pointerEvents="box-none">
+        <NavBanner
+          maneuver={nav.maneuver}
+          remainingM={nav.remainingM}
+          etaS={nav.etaS}
+          joining={nav.joining}
+          hint={
+            trip.route && !nav.hasSteps
+              ? isLeader
+                ? 'Tap "New route" to get turn-by-turn directions.'
+                : 'Turn-by-turn starts when the leader taps "New route".'
+              : undefined
+          }
+        />
         <View style={{ margin: space.md, padding: space.md, borderRadius: 14, backgroundColor: c.card, flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-          <Button small variant="secondary" title="Lobby" onPress={() => router.back()} />
+          <Button small variant="secondary" title="Lobby" onPress={() => goBack('/trip')} />
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: c.text }} numberOfLines={1}>
               {trip.destination ? trip.destination.label : 'No destination yet'}
@@ -125,12 +182,27 @@ export default function Drive() {
             {!!(note || trackingNote) && <Text style={{ color: c.textMuted, fontSize: 13 }}>{note || trackingNote}</Text>}
           </View>
         )}
+        {trip.halt && (
+          <HaltBanner halt={trip.halt} myDistanceM={brk.myDistanceM} arrived={brk.arrived} total={brk.total} meId={me} onContinue={brk.endBreak} />
+        )}
         <AlertBanners alerts={alerts} onDismiss={dismiss} />
       </SafeAreaView>
 
       {/* Bottom panel */}
       <SafeAreaView edges={['bottom']} style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }} pointerEvents="box-none">
         <View style={{ margin: space.md, padding: space.md, borderRadius: 14, backgroundColor: c.card }}>
+          <View style={{ marginBottom: space.md }}>
+            <ActionBar
+              breakActive={!!trip.halt}
+              busy={brk.busy}
+              onBreak={brk.requestBreak}
+              onSlow={() => sendGroup('slow', 'Sent: everyone slow down.')}
+              onOk={() => sendGroup('ok', "Sent: you're OK.")}
+              breakLeftMs={brk.breakLeftMs}
+              slowLeftMs={limits.slowLeftMs}
+              okLeftMs={limits.okLeftMs}
+            />
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
             {cars.length === 0 && <Text style={{ color: c.textMuted }}>Waiting for cars to share their position…</Text>}
             {cars.map((car) => (

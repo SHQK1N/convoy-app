@@ -14,7 +14,7 @@ test('fires once when a car falls behind, not every second', () => {
   assert.equal(nextAlerts([eleni()], mem, 0).length, 0);
   const first = nextAlerts([eleni({ behindReasons: ['distance'], gapMeters: 6200 })], mem, 1000);
   assert.equal(first.length, 1);
-  assert.equal(first[0].text, 'Eleni is falling behind, 6.2 kilometres back.');
+  assert.equal(first[0].text, 'Eleni is falling behind, 6.2 kilometres back. Slow down so they can catch up.');
   assert.equal(nextAlerts([eleni({ behindReasons: ['distance'], gapMeters: 6500 })], mem, 2000).length, 0);
 });
 

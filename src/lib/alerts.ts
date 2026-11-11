@@ -47,7 +47,7 @@ function problemText(kind: ProblemKind, s: CarStatus): string {
     case 'behind':
       return s.isMe
         ? `You are falling behind, ${km(s.gapMeters)} from the car ahead.`
-        : `${who} is falling behind, ${km(s.gapMeters)} back.`;
+        : `${who} is falling behind, ${km(s.gapMeters)} back. Slow down so they can catch up.`;
     case 'offRoute':
       return s.isMe ? 'You have left the route.' : `${who} has left the route.`;
     case 'offline':
@@ -71,6 +71,18 @@ function isActive(kind: ProblemKind, s: CarStatus): boolean {
   if (kind === 'behind') return s.behindReasons.includes('distance') || s.behindReasons.includes('time');
   if (kind === 'offRoute') return s.behindReasons.includes('offRoute');
   return s.fixAgeMs >= CONFIG.alerts.offlineAfterMs;
+}
+
+/**
+ * "I'm OK" from a car: treat its problems as already announced, so nothing is said about it
+ * again for CONFIG.alerts.repeatEveryMs (unless a NEW kind of problem starts).
+ */
+export function snooze(memory: AlertMemory, userId: string, now: number) {
+  for (const kind of ['behind', 'offRoute', 'offline'] as ProblemKind[]) {
+    const key = `${userId}:${kind}`;
+    const mem = memory.get(key);
+    if (mem?.active) memory.set(key, { ...mem, firedAt: now });
+  }
 }
 
 /**

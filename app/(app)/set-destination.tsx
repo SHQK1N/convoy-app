@@ -3,6 +3,7 @@
  * Search: OpenRouteService geocoder (src/services/geocode.ts), 400 ms after typing stops.
  */
 import { useRouter } from 'expo-router';
+import { goBack } from '../../src/components/goBack';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -43,7 +44,7 @@ export default function SetDestination() {
     setSaving(true);
     try {
       await setDestination(trip.id, place);
-      router.back();
+      goBack('/trip');
     } catch (e) {
       setError((e as Error).message);
       setSaving(false);
@@ -55,7 +56,7 @@ export default function SetDestination() {
       <View style={{ padding: space.lg, paddingBottom: 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.md }}>
           <Text style={{ flex: 1, fontSize: 28, fontWeight: '800', color: c.text }}>Where to?</Text>
-          <Button small variant="secondary" title="Cancel" onPress={() => router.back()} />
+          <Button small variant="secondary" title="Cancel" onPress={() => goBack('/trip')} />
         </View>
         <Field label="Search for a place" value={query} onChangeText={setQuery} placeholder="e.g. Meteora, Kalambaka" autoCapitalize="words" autoFocus />
         <ErrorText>{error}</ErrorText>

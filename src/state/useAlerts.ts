@@ -1,36 +1,43 @@
 /**
- * Left-behind / off-route / lost-signal alerts for the map screens (SPEC §6).
+ * Banners + spoken messages for the map screens (SPEC §6, §7).
  *
- *   const { alerts, dismiss, muted, setMuted } = useAlerts(cars, route, settings);
+ *   const { alerts, dismiss, notify, snoozeCar } = useAlerts(cars, route, settings);
  *
- * Every second: run the rules (src/lib/leftBehind.ts) on all cars → turn them into alert
- * events (src/lib/alerts.ts) → show them as banners and SPEAK them (expo-speech), so the
- * driver never has to look. Banners disappear after BANNER_MS.
+ * Every second: run the left-behind rules (src/lib/leftBehind.ts) on all cars → turn them into
+ * alert events (src/lib/alerts.ts) → banner + spoken message (src/state/voice.ts).
+ * notify() adds a one-off banner (e.g. "Maria asks everyone to slow down").
+ * snoozeCar() = that car said "I'm OK": don't repeat its alerts for a while.
  *
- * Note: this runs while the map screen is open. Alerts with the app in the background
- * (screen off) are a later step — they need the checks to run in the background task.
+ * Runs while the map screen is open. Alerts with the screen off are a later step.
  */
-import * as Speech from 'expo-speech';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MapCar } from '../components/map/types';
 import type { TripSettings } from '../config';
-import { AlertEvent, AlertMemory, CarStatus, nextAlerts } from '../lib/alerts';
+import { AlertEvent, AlertMemory, CarStatus, nextAlerts, snooze } from '../lib/alerts';
 import { cumulativeDistances, type LatLng } from '../lib/geo';
 import { detectLeftBehind, updateOffRouteTimer } from '../lib/leftBehind';
 import { advanceAlongRoute } from '../lib/prediction';
+import { speak, stopSpeaking } from './voice';
 
 const BANNER_MS = 12000;
 const MAX_BANNERS = 3;
 
-export function useAlerts(cars: MapCar[], route: LatLng[], settings: TripSettings) {
+export function useAlerts(
+  cars: MapCar[],
+  route: LatLng[],
+  settings: TripSettings,
+  /** During a group break the cars regroup at the stop anyway, so no "falling behind" alerts. */
+  breakActive = false,
+) {
   const memory = useRef<AlertMemory>(new Map());
   const offRouteSince = useRef(new Map<string, number | null>());
   const [alerts, setAlerts] = useState<AlertEvent[]>([]);
-  const [muted, setMuted] = useState(false);
-  const mutedRef = useRef(muted);
-  mutedRef.current = muted;
-
   const cum = useMemo(() => cumulativeDistances(route), [route]);
+
+  const show = (events: AlertEvent[]) => {
+    setAlerts((old) => [...events, ...old].slice(0, MAX_BANNERS));
+    events.forEach((e) => speak(e.text));
+  };
 
   // `cars` updates every second (useConvoy's clock), so this runs every second.
   useEffect(() => {
@@ -49,21 +56,12 @@ export function useAlerts(cars: MapCar[], route: LatLng[], settings: TripSetting
 
     const statuses: CarStatus[] = results.map((r) => {
       const car = cars.find((c) => c.id === r.userId)!;
-      return {
-        userId: r.userId,
-        name: car.name,
-        isMe: car.isMe,
-        behindReasons: r.reasons,
-        gapMeters: r.gapMeters,
-        fixAgeMs: car.ageMs,
-      };
+      return { userId: r.userId, name: car.name, isMe: car.isMe, behindReasons: breakActive ? r.reasons.filter((x) => x === 'offRoute') : r.reasons, gapMeters: r.gapMeters, fixAgeMs: car.ageMs };
     });
 
     const events = nextAlerts(statuses, memory.current, now);
-    if (!events.length) return;
-    setAlerts((old) => [...events, ...old].slice(0, MAX_BANNERS));
-    if (!mutedRef.current) for (const e of events) Speech.speak(e.text, { language: 'en-GB', rate: 1.0 });
-  }, [cars, route, cum, settings]);
+    if (events.length) show(events);
+  }, [cars, route, cum, settings, breakActive]);
 
   // Auto-hide banners.
   useEffect(() => {
@@ -73,15 +71,16 @@ export function useAlerts(cars: MapCar[], route: LatLng[], settings: TripSetting
   }, [alerts.length]);
 
   // Stop talking when leaving the screen.
-  useEffect(() => () => void Speech.stop(), []);
+  useEffect(() => () => stopSpeaking(), []);
 
   return {
     alerts,
     dismiss: (id: string) => setAlerts((old) => old.filter((a) => a.id !== id)),
-    muted,
-    setMuted: (m: boolean) => {
-      setMuted(m);
-      if (m) Speech.stop();
+    /** One-off banner + voice. `problem` = red, otherwise green. */
+    notify: (text: string, problem = false) => {
+      const now = Date.now();
+      show([{ id: `note:${now}:${Math.random()}`, userId: '', kind: 'behind', problem, text, at: now }]);
     },
+    snoozeCar: (userId: string) => snooze(memory.current, userId, Date.now()),
   };
 }

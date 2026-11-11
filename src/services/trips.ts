@@ -12,6 +12,7 @@ import { friendlyError, Profile } from './auth';
 import type { Place } from './geocode';
 import type { PositionMessage } from './live';
 import type { StoredRoute } from './route';
+import type { Halt } from '../lib/halt';
 import { supabase } from './supabase';
 import type { TripSettings } from '../config';
 
@@ -31,6 +32,8 @@ export type Trip = {
   pendingInviteeIds: string[]; // friends invited but not yet answered
   /** Shared route, calculated by the leader (null until "Start driving"). */
   route: StoredRoute | null;
+  /** Active group break, or null while driving (0006_breaks.sql). */
+  halt: Halt | null;
 };
 
 export type Invite = {
@@ -64,7 +67,7 @@ export async function getMyTrip(me: string): Promise<Trip | null> {
 
 export async function getTrip(tripId: string): Promise<Trip | null> {
   const [trip, members, invites] = await Promise.all([
-    supabase.from('trips').select('id, leader_id, dest_lat, dest_lng, dest_label, settings, route_geojson').eq('id', tripId).maybeSingle(),
+    supabase.from('trips').select('id, leader_id, dest_lat, dest_lng, dest_label, settings, route_geojson, halt').eq('id', tripId).maybeSingle(),
     supabase
       .from('trip_members')
       .select(`joined_at, last_lat, last_lng, last_speed, last_heading, last_seen_at, profile:profiles(${PROFILE_COLS})`)
@@ -82,6 +85,7 @@ export async function getTrip(tripId: string): Promise<Trip | null> {
     destination: t.dest_lat != null ? { lat: t.dest_lat, lng: t.dest_lng, label: t.dest_label ?? '' } : null,
     settings: t.settings,
     route: (t.route_geojson as StoredRoute | null) ?? null,
+    halt: (t.halt as Halt | null) ?? null,
     members: (members.data ?? []).map((m: any) => ({
       profile: m.profile as Profile,
       joinedAt: m.joined_at,
@@ -127,6 +131,9 @@ export async function saveRoute(tripId: string, route: StoredRoute | null) {
   const { error } = await supabase.from('trips').update({ route_geojson: route }).eq('id', tripId);
   if (error) throw new Error(friendlyError(error.message));
 }
+
+/** Start (halt) or end (null) a group break. Any member may (0006_breaks.sql). */
+export const setHalt = (tripId: string, halt: Halt | null) => rpc<void>('set_halt', { t: tripId, h: halt });
 
 /** Trip invites waiting for my answer, newest first. */
 export async function listMyInvites(me: string): Promise<Invite[]> {

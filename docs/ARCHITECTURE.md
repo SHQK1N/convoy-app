@@ -12,7 +12,8 @@ Product rules live in [SPEC.md](SPEC.md).
 | Backend | **Supabase** (Postgres + Auth + Realtime) | Accounts, friends, trips and live positions in one free-tier service |
 | Live positions | Supabase **Realtime Broadcast** on a channel per trip | Positions are sent car-to-car, not written to the database every second (cheap) |
 | Online status | Supabase **Realtime Presence** | Knows instantly who dropped out |
-| Routing | **OpenRouteService** directions API | Free tier (2,000 routes/day) |
+| Routing + navigation | **OpenRouteService** directions API (with turn instructions) | Free tier (2,000 routes/day). Turn-by-turn runs in the app itself — everyone must follow the SAME route for the alerts to work, and Google doesn't allow other apps inside Google Maps |
+| Break stops | **OpenRouteService POIs** (fuel, toilets), Overpass as backup | Free, same key |
 | "Next stop" search | **Overpass API** (OpenStreetMap) | Free; finds fuel / rest areas along the route |
 | Background GPS | `expo-location` + `expo-task-manager` | Keeps sharing while the phone is locked or in another app |
 | Spoken alerts | `expo-speech` | On-device text-to-speech, free |

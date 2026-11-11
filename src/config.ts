@@ -40,6 +40,18 @@ export const CONFIG = {
     clearAfterMs: 20000,
   },
 
+  /**
+   * Anti-spam for the driver buttons. Enforced three times: the button is disabled on the
+   * sender's phone, other phones ignore repeats from the same person, and breaks are also
+   * checked by the database (0007_button_limits.sql — keep BREAK_COOLDOWN in sync there).
+   */
+  cooldowns: {
+    slowMs: 60 * 1000,
+    okMs: 60 * 1000,
+    /** After a break ends, no new break for this long. */
+    breakMs: 5 * 60 * 1000,
+  },
+
   /** Spoken "halt" reminders, in metres before the stop. */
   haltReminderMeters: [5000, 2000, 500],
   /** How far ahead along the route to look for a "next stop" (fuel / rest area), in metres. */

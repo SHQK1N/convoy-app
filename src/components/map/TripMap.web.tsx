@@ -29,12 +29,49 @@ function carIcon(car: MapCar, card: string, text: string) {
   });
 }
 
+/**
+ * Cars get a new position about once a second; glide between them instead of jumping.
+ * (Turned off while zooming, when Leaflet moves markers itself.)
+ */
+const GLIDE_CSS = '.leaflet-marker-icon{transition:transform 1s linear}.leaflet-zoom-anim .leaflet-marker-icon{transition:none}';
+
 export default function TripMap(props: TripMapProps) {
   const c = useColours();
   const dark = useIsDark();
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
-  const layers = useRef<{ route?: L.Polyline; dest?: L.CircleMarker; cars: Map<string, L.Marker> }>({ cars: new Map() });
+  const layers = useRef<{ route?: L.Polyline; join?: L.Polyline; dest?: L.CircleMarker; stop?: L.Marker; cars: Map<string, L.Marker> }>({ cars: new Map() });
+
+  // My "join the group route" leg (dashed)
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+    layers.current.join?.remove();
+    layers.current.join = undefined;
+    if (props.joinLine && props.joinLine.length > 1) {
+      layers.current.join = L.polyline(props.joinLine.map((p) => [p.lat, p.lng] as [number, number]), {
+        color: '#1E88E5', weight: 5, opacity: 0.9, dashArray: '8 10',
+      }).addTo(m);
+    }
+  }, [props.joinLine]);
+
+  // Break stop marker
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+    layers.current.stop?.remove();
+    layers.current.stop = undefined;
+    if (props.stop) {
+      const icon = L.divIcon({
+        className: '',
+        iconSize: [0, 0],
+        html: `<div style="position:absolute;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:17px;background:#fff;border:4px solid ${c.brand};display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 1px 6px rgba(0,0,0,.5)">🛑</div>`,
+      });
+      layers.current.stop = L.marker([props.stop.lat, props.stop.lng], { icon, zIndexOffset: 2000 })
+        .bindTooltip(escapeHtml(props.stop.label))
+        .addTo(m);
+    }
+  }, [props.stop?.lat, props.stop?.lng, props.stop?.label, c.brand]);
 
   // Create the map once.
   useEffect(() => {
@@ -138,7 +175,7 @@ export default function TripMap(props: TripMapProps) {
   return (
     <>
       {/* Dark mode: invert the map tiles (cheap night look without a second tile provider). */}
-      <style>{dark ? '.convoy-tiles{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9)}' : ''}</style>
+      <style>{(dark ? '.convoy-tiles{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9)}' : '') + GLIDE_CSS}</style>
       {/* zIndex 0 = own stacking context, so Leaflet's internal z-indexes (400+) stay BELOW the
           screen's overlay panels instead of covering them. */}
       <div ref={el} style={{ position: 'absolute', inset: 0, zIndex: 0, background: c.background }} />

@@ -21,6 +21,13 @@ alert for all, and a one-tap **Halt** tells the whole group to pull over at the 
 - `src/lib/simulate.ts` — fake convoy for testing (used by the map demo and the "Test convoy" button).
 - `src/lib/alerts.ts` + `src/state/useAlerts.ts` + `src/components/AlertBanners.tsx` — when to alert, what to say,
   how it looks. Thresholds live in `src/config.ts` (`behind`, `alerts`).
+- `src/lib/halt.ts` + `src/state/useHalt.ts` + `src/services/stops.ts` + `src/components/DriveControls.tsx` —
+  group breaks: choosing the stop, countdown/reminders, finding fuel stations/toilets, the buttons and banner.
+- `src/state/voice.ts` — everything the app says out loud, with one mute switch.
+- `src/lib/nav.ts` + `src/state/useNavigation.ts` + `src/components/NavBanner.tsx` — turn-by-turn: next maneuver,
+  voice prompts (earlier when driving fast), "join the group route" leg.
+- `src/lib/cooldown.ts` + `src/state/useButtonLimits.ts` — anti-spam for the driver buttons (lengths in `src/config.ts` → `cooldowns`).
+- `src/components/goBack.ts` — Back buttons that also work after a page refresh.
 - `src/state/` — who is signed in (`AuthProvider`), live friends list (`useFriends`), my trip + invites (`useTrip`).
 - `src/components/` — theme colours (`theme.ts`), shared UI pieces (`ui.tsx`), `TripCard`, `confirm`.
 - `app/` — screens (Expo Router: one file = one screen).
@@ -52,5 +59,6 @@ Background GPS (later milestones) needs a development build, not Expo Go — see
 3. ✅ Create trip, invite friends, set destination, leave lobby / leader hand-over, push notifications (run `0004_trips_and_push.sql`; push needs the dev build)
 4. ✅ Live map: dots with names, shared route, background GPS, offline cars predicted + faded, test convoy (run `0005_live_positions.sql`; phones need the dev build + Google Maps key). Try it on the PC: sign-in screen → **Map demo (testing)**
 5. ✅ Left-behind / off-route / lost-signal alerts for everyone: red banner + spoken message, "caught up" when resolved, voice on/off (alerts run while the map is open; background alerts later)
-6. ⏳ Halt / Slow down / I'm OK buttons, next-stop search, spoken reminders
+6. ✅ ☕ Break (pick reason → real stop ahead of the front car → everyone counts down + parks → Continue trip), 🐢 Slow down, 👍 I'm OK; test cars wait for whoever falls behind (run `0006_breaks.sql`)
+6b. ✅ Turn-by-turn navigation (replaces Google Maps): next turn + distance + "then…", spoken prompts, km/time left; cars starting elsewhere get a dashed "join the group route" leg. Anti-spam cooldowns on the buttons (run `0007_button_limits.sql`)
 7. ⏳ Dev builds on Android + iPhone, test drive with the group

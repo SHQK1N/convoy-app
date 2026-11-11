@@ -8,6 +8,7 @@
  * "Open map" → the live map (drive.tsx). Opening it starts sharing your location.
  */
 import { useRouter } from 'expo-router';
+import { goBack } from '../../src/components/goBack';
 import React, { useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -83,7 +84,7 @@ export default function TripLobby() {
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: space.xl }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Text style={{ flex: 1, fontSize: 28, fontWeight: '800', color: c.text }}>Trip</Text>
-          <Button small variant="secondary" title="Back" onPress={() => router.back()} />
+          <Button small variant="secondary" title="Back" onPress={() => goBack('/')} />
         </View>
 
         <Button style={{ marginTop: space.md }} title="Open map" onPress={() => router.push('/drive')} />

@@ -26,6 +26,10 @@ export type TripMapProps = {
   cars: MapCar[];
   /** Change this number to make the map zoom to fit everything again (e.g. a "fit" button). */
   fitKey: number;
+  /** My own "join the group route" leg, drawn dashed (useNavigation), or null. */
+  joinLine?: LatLng[] | null;
+  /** Break stop everyone is heading to, or null when driving. */
+  stop?: (LatLng & { label: string }) | null;
   /** When set, the camera keeps this point (my car) centred — "Follow me" mode. */
   follow: LatLng | null;
   /** Called when the user drags the map themselves (the screen then turns Follow off). */

@@ -25,12 +25,22 @@ export type PositionMessage = {
   at: number;
 };
 
+/** One-off group messages from the action buttons (breaks themselves are stored on the trip). */
+export type TripEvent = {
+  type: 'slow' | 'ok';
+  by: string;
+  byName: string;
+  at: number;
+};
+
 const EVENT = 'pos';
+const ACTION = 'evt';
 
 export async function joinTripChannel(
   tripId: string,
   onPosition: (p: PositionMessage) => void,
-): Promise<{ send: (p: PositionMessage) => void; leave: () => void }> {
+  onEvent?: (e: TripEvent) => void,
+): Promise<{ send: (p: PositionMessage) => void; sendEvent: (e: TripEvent) => void; leave: () => void }> {
   // Private channels authorise with the user's login token.
   await supabase.realtime.setAuth();
 
@@ -39,6 +49,10 @@ export async function joinTripChannel(
     .on('broadcast', { event: EVENT }, ({ payload }) => {
       const p = payload as PositionMessage;
       if (typeof p?.lat === 'number' && typeof p?.lng === 'number' && p.userId) onPosition(p);
+    })
+    .on('broadcast', { event: ACTION }, ({ payload }) => {
+      const e = payload as TripEvent;
+      if (e?.type && e.by) onEvent?.(e);
     });
 
   let joined = false;
@@ -50,6 +64,9 @@ export async function joinTripChannel(
   return {
     send: (p) => {
       if (joined) channel.send({ type: 'broadcast', event: EVENT, payload: p });
+    },
+    sendEvent: (e) => {
+      if (joined) channel.send({ type: 'broadcast', event: ACTION, payload: e });
     },
     leave: () => {
       supabase.removeChannel(channel);

@@ -15,15 +15,24 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MapCar } from '../components/map/types';
 import { cumulativeDistances } from '../lib/geo';
 import { estimateCar } from '../lib/prediction';
-import { SIM_CARS, simulateConvoy } from '../lib/simulate';
-import { joinTripChannel, PositionMessage } from '../services/live';
+import { ConvoySim, SIM_CARS, SimCar } from '../lib/simulate';
+import { joinTripChannel, PositionMessage, TripEvent } from '../services/live';
 import { setPositionListener, startTracking } from '../services/location';
 import { routePoints } from '../services/route';
 import type { Trip } from '../services/trips';
 
 const TICK_MS = 1000;
 
-export function useConvoy(trip: Trip | null, me: string | undefined, simulate: boolean) {
+export function useConvoy(
+  trip: Trip | null,
+  me: string | undefined,
+  simulate: boolean,
+  /** Group messages from other phones (Slow down / I'm OK). */
+  onEvent?: (e: TripEvent) => void,
+) {
+  const onEventRef = useRef(onEvent);
+  onEventRef.current = onEvent;
+  const liveRef = useRef<Awaited<ReturnType<typeof joinTripChannel>> | null>(null);
   const fixes = useRef(new Map<string, PositionMessage>());
   const [now, setNow] = useState(Date.now());
   const [trackingNote, setTrackingNote] = useState<string | null>(null);
@@ -46,9 +55,9 @@ export function useConvoy(trip: Trip | null, me: string | undefined, simulate: b
     let live: Awaited<ReturnType<typeof joinTripChannel>> | null = null;
     let cancelled = false;
 
-    joinTripChannel(tripId, keepNewest).then((l) => {
+    joinTripChannel(tripId, keepNewest, (e) => onEventRef.current?.(e)).then((l) => {
       if (cancelled) l.leave();
-      else live = l;
+      else live = liveRef.current = l;
     });
 
     setPositionListener((p) => {
@@ -60,6 +69,7 @@ export function useConvoy(trip: Trip | null, me: string | undefined, simulate: b
     return () => {
       cancelled = true;
       live?.leave();
+      liveRef.current = null;
       // Tracking itself keeps running in the background on purpose (screen off, other app).
       // It stops when you leave the trip — see stopTracking() calls in the lobby / sign-out.
       setPositionListener(null);
@@ -78,16 +88,18 @@ export function useConvoy(trip: Trip | null, me: string | undefined, simulate: b
   const route = useMemo(() => routePoints(trip?.route), [trip?.route]);
   const cum = useMemo(() => cumulativeDistances(route), [route]);
 
+  // The simulator keeps state between ticks (cars slow down / park), so it lives in a ref.
+  const simRef = useRef<ConvoySim | null>(null);
+  useEffect(() => {
+    const myCarSim: SimCar = { id: me ?? 'me', name: 'You', colour: '#FF4D26', kmh: 100, startOffsetM: 600 };
+    simRef.current = simStart != null && route.length > 1 ? new ConvoySim(route, [...SIM_CARS, myCarSim], simStart) : null;
+  }, [simStart, route, me]);
+
   const cars: MapCar[] = useMemo(() => {
     if (!trip) return [];
     const out: MapCar[] = [];
-    const simFixes =
-      simStart != null && route.length > 1
-        ? simulateConvoy(route, simStart, now, [
-            ...SIM_CARS,
-            { id: me ?? 'me', name: 'You', colour: '#FF4D26', kmh: 100, startOffsetM: 600 },
-          ], cum)
-        : [];
+    const sim = simRef.current;
+    const simFixes = sim ? sim.step(now, trip.halt ? trip.halt.stop.alongM : null) : [];
     const simMine = simFixes.find((f) => f.userId === me);
 
     for (const m of trip.members) {
@@ -117,5 +129,8 @@ export function useConvoy(trip: Trip | null, me: string | undefined, simulate: b
   /** My latest REAL position (not simulated), or null until GPS has answered. Used as the route start. */
   const myFix = me ? fixes.current.get(me) ?? null : null;
 
-  return { cars, route, trackingNote, myFix };
+  /** Send a group message (Slow down / I'm OK) to everyone else in the trip. */
+  const sendEvent = (e: TripEvent) => liveRef.current?.sendEvent(e);
+
+  return { cars, route, trackingNote, myFix, sendEvent };
 }

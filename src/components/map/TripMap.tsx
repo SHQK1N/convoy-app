@@ -73,12 +73,27 @@ export default function TripMap(props: TripMapProps) {
           strokeWidth={6}
         />
       )}
+      {props.joinLine && props.joinLine.length > 1 && (
+        <Polyline
+          coordinates={props.joinLine.map((p) => ({ latitude: p.lat, longitude: p.lng }))}
+          strokeColor="#1E88E5"
+          strokeWidth={5}
+          lineDashPattern={[8, 10]}
+        />
+      )}
       {props.destination && (
         <Marker
           coordinate={{ latitude: props.destination.lat, longitude: props.destination.lng }}
           title={props.destination.label}
           pinColor={c.brand}
         />
+      )}
+      {props.stop && (
+        <Marker coordinate={{ latitude: props.stop.lat, longitude: props.stop.lng }} title={props.stop.label} anchor={{ x: 0.5, y: 0.5 }} zIndex={20}>
+          <View style={[styles.stop, { borderColor: c.brand }]}>
+            <Text style={{ fontSize: 17 }}>🛑</Text>
+          </View>
+        </Marker>
       )}
       {props.cars.map((car) => (
         <Marker
@@ -100,4 +115,5 @@ const styles = StyleSheet.create({
   label: { borderWidth: 2, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 3, maxWidth: 160 },
   labelText: { fontSize: 13, fontWeight: '700' },
   dot: { width: 22, height: 22, borderRadius: 11, borderWidth: 3, borderColor: '#FFFFFF' },
+  stop: { width: 34, height: 34, borderRadius: 17, borderWidth: 4, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
 });
