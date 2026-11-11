@@ -32,6 +32,7 @@ export default function Demo() {
   const [startedAt, setStartedAt] = useState(Date.now());
   const [now, setNow] = useState(Date.now());
   const [fitKey, setFitKey] = useState(0);
+  const [following, setFollowing] = useState(true);
 
   useEffect(() => {
     fetchRoute([START, DEST])
@@ -59,7 +60,14 @@ export default function Demo() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
-      <TripMap route={route} destination={DEST} cars={cars} fitKey={fitKey} />
+      <TripMap
+        route={route}
+        destination={DEST}
+        cars={cars}
+        fitKey={fitKey}
+        follow={following ? cars.find((x) => x.isMe)?.position ?? null : null}
+        onUserMove={() => setFollowing(false)}
+      />
       <SafeAreaView edges={['top']} style={{ position: 'absolute', top: 0, left: 0, right: 0 }} pointerEvents="box-none">
         <View style={{ margin: space.md, padding: space.md, borderRadius: 14, backgroundColor: c.card, flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
           <Button small variant="secondary" title="Back" onPress={() => router.back()} />
@@ -84,8 +92,12 @@ export default function Demo() {
               <Text style={{ color: c.textMuted, fontSize: 12 }}>{car.predicted ? ageLabel(car.ageMs) : 'live'}</Text>
             </View>
           ))}
-          <Button small variant="secondary" title="Fit all" onPress={() => setFitKey((k) => k + 1)} />
-          <Button small variant="secondary" title="Restart" onPress={() => { setStartedAt(Date.now()); setFitKey((k) => k + 1); }} />
+          {following ? (
+            <Button small variant="secondary" title="Fit all" onPress={() => { setFollowing(false); setFitKey((k) => k + 1); }} />
+          ) : (
+            <Button small title="Follow me" onPress={() => setFollowing(true)} />
+          )}
+          <Button small variant="secondary" title="Restart" onPress={() => { setStartedAt(Date.now()); setFollowing(true); }} />
           <Button small variant="secondary" title={muted ? '🔇 Voice off' : '🔊 Voice on'} onPress={() => setMuted(!muted)} />
         </View>
       </SafeAreaView>

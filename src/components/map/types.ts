@@ -26,7 +26,14 @@ export type TripMapProps = {
   cars: MapCar[];
   /** Change this number to make the map zoom to fit everything again (e.g. a "fit" button). */
   fitKey: number;
+  /** When set, the camera keeps this point (my car) centred — "Follow me" mode. */
+  follow: LatLng | null;
+  /** Called when the user drags the map themselves (the screen then turns Follow off). */
+  onUserMove?: () => void;
 };
+
+/** Zoom used when following a car: streets readable, a few km visible. */
+export const FOLLOW_ZOOM = 14;
 
 /** "2 min ago", "45 s ago" */
 export function ageLabel(ms: number): string {

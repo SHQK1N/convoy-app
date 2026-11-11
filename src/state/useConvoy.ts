@@ -114,5 +114,8 @@ export function useConvoy(trip: Trip | null, me: string | undefined, simulate: b
     return out;
   }, [trip, me, now, route, cum, simStart]);
 
-  return { cars, route, trackingNote };
+  /** My latest REAL position (not simulated), or null until GPS has answered. Used as the route start. */
+  const myFix = me ? fixes.current.get(me) ?? null : null;
+
+  return { cars, route, trackingNote, myFix };
 }

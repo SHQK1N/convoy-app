@@ -9,7 +9,7 @@ import React, { useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useColours, useIsDark } from '../theme';
-import { ageLabel, boundsOf, MapCar, TripMapProps } from './types';
+import { ageLabel, boundsOf, FOLLOW_ZOOM, MapCar, TripMapProps } from './types';
 
 function CarDot({ car }: { car: MapCar }) {
   const c = useColours();
@@ -31,10 +31,22 @@ export default function TripMap(props: TripMapProps) {
   const dark = useIsDark();
   const map = useRef<MapView>(null);
 
-  // Zoom to fit when asked (fitKey changes) or when the route first arrives.
+  // Follow me: keep my car centred (street-level zoom the first time).
+  const zoomedIn = useRef(false);
+  useEffect(() => {
+    if (!map.current || !props.follow) {
+      zoomedIn.current = false;
+      return;
+    }
+    const center = { latitude: props.follow.lat, longitude: props.follow.lng };
+    map.current.animateCamera(zoomedIn.current ? { center } : { center, zoom: FOLLOW_ZOOM }, { duration: 800 });
+    zoomedIn.current = true;
+  }, [props.follow?.lat, props.follow?.lng]);
+
+  // Zoom to fit when asked (fitKey changes) or when the route first arrives (not while following).
   useEffect(() => {
     const b = boundsOf(props);
-    if (!b || !map.current) return;
+    if (!b || !map.current || (props.follow && props.fitKey === 0)) return;
     map.current.fitToCoordinates(
       [
         { latitude: b.minLat, longitude: b.minLng },
@@ -52,6 +64,7 @@ export default function TripMap(props: TripMapProps) {
       userInterfaceStyle={dark ? 'dark' : 'light'}
       showsCompass={false}
       toolbarEnabled={false}
+      onPanDrag={() => props.onUserMove?.()}
     >
       {props.route.length > 1 && (
         <Polyline

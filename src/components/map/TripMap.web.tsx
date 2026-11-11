@@ -10,7 +10,7 @@ import L from 'leaflet';
 // It's served from public/leaflet/ (a copy of node_modules/leaflet/dist) and linked in public/index.html.
 import React, { useEffect, useRef } from 'react';
 import { useColours, useIsDark } from '../theme';
-import { ageLabel, boundsOf, MapCar, TripMapProps } from './types';
+import { ageLabel, boundsOf, FOLLOW_ZOOM, MapCar, TripMapProps } from './types';
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
@@ -92,10 +92,39 @@ export default function TripMap(props: TripMapProps) {
     }
   }, [props.cars, c.card, c.text]);
 
-  // Fit to everything when asked, or when the route first arrives.
+  // Report map drags by the user (not our own panning) so the screen can switch Follow off.
+  const onUserMove = useRef(props.onUserMove);
+  onUserMove.current = props.onUserMove;
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+    const handler = () => onUserMove.current?.();
+    m.on('dragstart', handler);
+    return () => {
+      m.off('dragstart', handler);
+    };
+  }, []);
+
+  // Follow me: keep my car centred. First time, zoom in to street level.
+  const zoomedIn = useRef(false);
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !props.follow) {
+      zoomedIn.current = false;
+      return;
+    }
+    if (!zoomedIn.current) {
+      m.setView([props.follow.lat, props.follow.lng], Math.max(m.getZoom(), FOLLOW_ZOOM), { animate: true });
+      zoomedIn.current = true;
+    } else {
+      m.panTo([props.follow.lat, props.follow.lng], { animate: true, duration: 0.8 });
+    }
+  }, [props.follow?.lat, props.follow?.lng]);
+
+  // Fit to everything when asked, or when the route first arrives (not while following).
   useEffect(() => {
     const b = boundsOf(props);
-    if (!b || !map.current) return;
+    if (!b || !map.current || (props.follow && props.fitKey === 0)) return;
     map.current.fitBounds(
       [
         [b.minLat, b.minLng],

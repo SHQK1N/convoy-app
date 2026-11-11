@@ -27,7 +27,9 @@ import { useAlerts } from '../../src/state/useAlerts';
 import { useTrip } from '../../src/state/useTrip';
 
 /** Used as the route start only when the leader's GPS is unavailable (e.g. testing on a PC). */
-const FALLBACK_START = { lat: 37.9838, lng: 23.7275 }; // Athens, Syntagma
+const FALLBACK_START = { lat: 37.9838, lng: 23.7275 }; // Athens, Omonoia
+/** How long the leader's screen waits for GPS before routing from the fallback. */
+const GPS_WAIT_MS = 10000;
 
 export default function Drive() {
   const c = useColours();
@@ -38,7 +40,10 @@ export default function Drive() {
   const [routeBusy, setRouteBusy] = useState(false);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const { cars, route, trackingNote } = useConvoy(trip, me, simulate);
+  const { cars, route, trackingNote, myFix } = useConvoy(trip, me, simulate);
+  // Follow me: camera stays on my car. Dragging the map or "Fit all" turns it off.
+  const [following, setFollowing] = useState(true);
+  const myCar = cars.find((car) => car.isMe);
   const { alerts, dismiss, muted, setMuted } = useAlerts(cars, route, trip?.settings ?? DEFAULT_TRIP_SETTINGS);
 
   const isLeader = !!trip && trip.leaderId === me;
@@ -48,7 +53,8 @@ export default function Drive() {
     setRouteBusy(true);
     setError('');
     try {
-      let start = await getCurrentPosition();
+      // Start from where I am: my live GPS fix, else ask GPS once, else (no GPS at all) Athens.
+      let start = myFix ? { lat: myFix.lat, lng: myFix.lng } : await getCurrentPosition();
       if (!start) {
         start = FALLBACK_START;
         setNote('No GPS here — route starts from Athens for testing.');
@@ -63,11 +69,19 @@ export default function Drive() {
     }
   }
 
-  // Leader: make the route automatically if there isn't one yet.
+  // Leader: make the route automatically if there isn't one yet — as soon as my GPS answers,
+  // or after GPS_WAIT_MS without an answer (then calculateRoute falls back).
+  const needsRoute = isLeader && !!trip?.destination && !trip?.route;
   useEffect(() => {
-    if (isLeader && trip?.destination && !trip.route && !routeBusy) calculateRoute();
+    if (!needsRoute || routeBusy) return;
+    if (myFix) {
+      calculateRoute();
+      return;
+    }
+    const t = setTimeout(calculateRoute, GPS_WAIT_MS);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLeader, trip?.destination?.lat, trip?.destination?.lng, !!trip?.route]);
+  }, [needsRoute, !!myFix, trip?.destination?.lat, trip?.destination?.lng]);
 
   if (!trip) {
     return (
@@ -83,7 +97,14 @@ export default function Drive() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
-      <TripMap route={route} destination={trip.destination} cars={cars} fitKey={fitKey} />
+      <TripMap
+        route={route}
+        destination={trip.destination}
+        cars={cars}
+        fitKey={fitKey}
+        follow={following && myCar ? myCar.position : null}
+        onUserMove={() => setFollowing(false)}
+      />
 
       {/* Top bar */}
       <SafeAreaView edges={['top']} style={{ position: 'absolute', top: 0, left: 0, right: 0 }} pointerEvents="box-none">
@@ -121,7 +142,19 @@ export default function Drive() {
             ))}
           </ScrollView>
           <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.md, flexWrap: 'wrap' }}>
-            <Button small variant="secondary" title="Fit all" onPress={() => setFitKey((k) => k + 1)} />
+            {following ? (
+              <Button
+                small
+                variant="secondary"
+                title="Fit all"
+                onPress={() => {
+                  setFollowing(false);
+                  setFitKey((k) => k + 1);
+                }}
+              />
+            ) : (
+              <Button small title="Follow me" onPress={() => setFollowing(true)} />
+            )}
             <Button small variant="secondary" title={muted ? '🔇 Voice off' : '🔊 Voice on'} onPress={() => setMuted(!muted)} />
             {isLeader && trip.destination && (
               <Button small variant="secondary" title="New route" busy={routeBusy} onPress={calculateRoute} />
@@ -134,7 +167,7 @@ export default function Drive() {
                 disabled={route.length < 2}
                 onPress={() => {
                   setSimulate((s) => !s);
-                  setFitKey((k) => k + 1);
+                  setFollowing(true); // ride along with the simulated "You"
                 }}
               />
             )}
