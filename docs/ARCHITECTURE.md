@@ -31,6 +31,11 @@ Product rules live in [SPEC.md](SPEC.md).
 - **Left-behind detection runs on every phone** from the same shared data, so all phones reach the
   same conclusion without a server. The car that detects a problem first broadcasts the alert;
   duplicates are ignored by alert id.
+- **Alerts** (`src/lib/alerts.ts`): every phone runs the same rules every second, so every phone alerts
+  without a server. Before comparing distances, each fresh position is moved forward by its own speed to
+  "now", so cars are compared at the same moment. Positions older than 10 s never trigger distance
+  alerts (that's the lost-signal alert's job). An alert fires once when a problem starts, repeats every
+  5 min while it lasts, and "caught up" fires only after 20 s without the problem (no flip-flopping).
 - **Offline prediction** (dead reckoning): take the last known position + speed, project it forward
   along the shared route polyline. Pure function in `src/lib/prediction.ts`, unit-tested.
 

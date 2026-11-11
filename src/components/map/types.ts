@@ -11,6 +11,8 @@ export type MapCar = {
   name: string;
   colour: string;
   position: LatLng;
+  /** last known speed, m/s (null if unknown) — used by the left-behind time rule */
+  speed: number | null;
   /** true = no live signal; position is an estimate → drawn faded */
   predicted: boolean;
   /** how old the last real position is, ms */

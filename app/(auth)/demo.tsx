@@ -16,6 +16,9 @@ import { cumulativeDistances, LatLng } from '../../src/lib/geo';
 import { estimateCar } from '../../src/lib/prediction';
 import { SIM_CARS, simulateConvoy, SPEEDUP } from '../../src/lib/simulate';
 import { fetchRoute, routePoints } from '../../src/services/route';
+import { AlertBanners } from '../../src/components/AlertBanners';
+import { DEFAULT_TRIP_SETTINGS } from '../../src/config';
+import { useAlerts } from '../../src/state/useAlerts';
 
 const START = { lat: 37.9838, lng: 23.7275 }; // Athens
 const DEST = { lat: 39.7217, lng: 21.6306, label: 'Meteora, Kalambaka' };
@@ -47,10 +50,12 @@ export default function Demo() {
       simulateConvoy(route, startedAt, now, CARS, cum).map((f) => {
         const car = CARS.find((x) => x.id === f.userId)!;
         const est = estimateCar(f, route, now, cum);
-        return { id: f.userId, name: car.name, colour: car.colour, position: est.position, predicted: est.predicted, ageMs: est.ageMs, isMe: f.userId === 'me' };
+        return { id: f.userId, name: car.name, colour: car.colour, position: est.position, speed: f.speed, predicted: est.predicted, ageMs: est.ageMs, isMe: f.userId === 'me' };
       }),
     [route, startedAt, now, cum],
   );
+
+  const { alerts, dismiss, muted, setMuted } = useAlerts(cars, route, DEFAULT_TRIP_SETTINGS);
 
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
@@ -68,6 +73,7 @@ export default function Demo() {
             <ErrorText>{error}</ErrorText>
           </View>
         )}
+        <AlertBanners alerts={alerts} onDismiss={dismiss} />
       </SafeAreaView>
       <SafeAreaView edges={['bottom']} style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }} pointerEvents="box-none">
         <View style={{ margin: space.md, padding: space.md, borderRadius: 14, backgroundColor: c.card, flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, alignItems: 'center' }}>
@@ -80,6 +86,7 @@ export default function Demo() {
           ))}
           <Button small variant="secondary" title="Fit all" onPress={() => setFitKey((k) => k + 1)} />
           <Button small variant="secondary" title="Restart" onPress={() => { setStartedAt(Date.now()); setFitKey((k) => k + 1); }} />
+          <Button small variant="secondary" title={muted ? '🔇 Voice off' : '🔊 Voice on'} onPress={() => setMuted(!muted)} />
         </View>
       </SafeAreaView>
     </View>

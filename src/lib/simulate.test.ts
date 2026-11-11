@@ -22,7 +22,7 @@ test('offline car freezes its last fix during the gap, then resumes', () => {
   const g = (now: number) => simulateConvoy(route, 0, now).find((f) => f.userId === 'sim-giorgos')!;
   assert.equal(g(30_000).at, 15_000); // in the gap: fix is from t = 15 s
   assert.equal(g(30_000).lat, g(40_000).lat); // not moving while offline
-  assert.equal(g(65_000).at, 65_000); // back online
+  assert.equal(g(80_000).at, 80_000); // back online
 });
 
 test('the slow car falls further behind over time', () => {

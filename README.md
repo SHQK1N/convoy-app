@@ -19,6 +19,8 @@ alert for all, and a one-tap **Halt** tells the whole group to pull over at the 
   `live.ts` (live positions channel), `location.ts` (GPS, incl. background).
 - `src/components/map/` — the map: `TripMap.tsx` (phones, react-native-maps) and `TripMap.web.tsx` (browser, Leaflet).
 - `src/lib/simulate.ts` — fake convoy for testing (used by the map demo and the "Test convoy" button).
+- `src/lib/alerts.ts` + `src/state/useAlerts.ts` + `src/components/AlertBanners.tsx` — when to alert, what to say,
+  how it looks. Thresholds live in `src/config.ts` (`behind`, `alerts`).
 - `src/state/` — who is signed in (`AuthProvider`), live friends list (`useFriends`), my trip + invites (`useTrip`).
 - `src/components/` — theme colours (`theme.ts`), shared UI pieces (`ui.tsx`), `TripCard`, `confirm`.
 - `app/` — screens (Expo Router: one file = one screen).
@@ -49,6 +51,6 @@ Background GPS (later milestones) needs a development build, not Expo Go — see
 2. ✅ Accounts + friends list (needs Supabase keys to use — see SETUP.md)
 3. ✅ Create trip, invite friends, set destination, leave lobby / leader hand-over, push notifications (run `0004_trips_and_push.sql`; push needs the dev build)
 4. ✅ Live map: dots with names, shared route, background GPS, offline cars predicted + faded, test convoy (run `0005_live_positions.sql`; phones need the dev build + Google Maps key). Try it on the PC: sign-in screen → **Map demo (testing)**
-5. ⏳ Left-behind alerts + offline prediction on the map
+5. ✅ Left-behind / off-route / lost-signal alerts for everyone: red banner + spoken message, "caught up" when resolved, voice on/off (alerts run while the map is open; background alerts later)
 6. ⏳ Halt / Slow down / I'm OK buttons, next-stop search, spoken reminders
 7. ⏳ Dev builds on Android + iPhone, test drive with the group

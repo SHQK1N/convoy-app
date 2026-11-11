@@ -8,7 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { distance, projectOnRoute, pointAlongRoute, cumulativeDistances } from './geo';
-import { estimateCar } from './prediction';
+import { advanceAlongRoute, estimateCar } from './prediction';
 import { detectLeftBehind, updateOffRouteTimer } from './leftBehind';
 import { DEFAULT_TRIP_SETTINGS } from '../config';
 
@@ -110,4 +110,11 @@ test('off-route rule needs 60 s before firing', () => {
   assert.deepEqual(detectLeftBehind([car], route, DEFAULT_TRIP_SETTINGS, 62_000)[0].reasons, ['offRoute']);
   // Back on route resets the timer
   assert.equal(updateOffRouteTimer(since, route[1], route, DEFAULT_TRIP_SETTINGS, 70_000), null);
+});
+
+test('advanceAlongRoute: moves a few-seconds-old fix forward by its speed', () => {
+  const p = { lat: 38.1, lng: 23.7 };
+  const moved = advanceAlongRoute(p, 25, 4000, route);
+  near(distance(p, moved), 100, 2);
+  assert.deepEqual(advanceAlongRoute(p, null, 4000, route), p);
 });

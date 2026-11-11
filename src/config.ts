@@ -28,6 +28,18 @@ export const CONFIG = {
   /** Stop predicting an offline car's position after this long (it may have stopped). */
   maxPredictionMs: 15 * 60 * 1000,
 
+  /** Alerts (SPEC §6). */
+  alerts: {
+    /** Ignore a car for distance/route alerts when its last real position is older than this, ms. */
+    staleAfterMs: 10000,
+    /** Say "X lost signal" once a car has had no signal this long, ms. */
+    offlineAfterMs: 45000,
+    /** While a problem lasts, repeat its alert at most this often, ms. */
+    repeatEveryMs: 5 * 60 * 1000,
+    /** A problem must be gone this long before "X has caught up" (stops flip-flopping), ms. */
+    clearAfterMs: 20000,
+  },
+
   /** Spoken "halt" reminders, in metres before the stop. */
   haltReminderMeters: [5000, 2000, 500],
   /** How far ahead along the route to look for a "next stop" (fuel / rest area), in metres. */

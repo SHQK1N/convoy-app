@@ -21,6 +21,9 @@ import { getCurrentPosition } from '../../src/services/location';
 import { fetchRoute } from '../../src/services/route';
 import { saveRoute } from '../../src/services/trips';
 import { useConvoy } from '../../src/state/useConvoy';
+import { AlertBanners } from '../../src/components/AlertBanners';
+import { DEFAULT_TRIP_SETTINGS } from '../../src/config';
+import { useAlerts } from '../../src/state/useAlerts';
 import { useTrip } from '../../src/state/useTrip';
 
 /** Used as the route start only when the leader's GPS is unavailable (e.g. testing on a PC). */
@@ -36,6 +39,7 @@ export default function Drive() {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const { cars, route, trackingNote } = useConvoy(trip, me, simulate);
+  const { alerts, dismiss, muted, setMuted } = useAlerts(cars, route, trip?.settings ?? DEFAULT_TRIP_SETTINGS);
 
   const isLeader = !!trip && trip.leaderId === me;
 
@@ -100,6 +104,7 @@ export default function Drive() {
             {!!(note || trackingNote) && <Text style={{ color: c.textMuted, fontSize: 13 }}>{note || trackingNote}</Text>}
           </View>
         )}
+        <AlertBanners alerts={alerts} onDismiss={dismiss} />
       </SafeAreaView>
 
       {/* Bottom panel */}
@@ -117,6 +122,7 @@ export default function Drive() {
           </ScrollView>
           <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.md, flexWrap: 'wrap' }}>
             <Button small variant="secondary" title="Fit all" onPress={() => setFitKey((k) => k + 1)} />
+            <Button small variant="secondary" title={muted ? '🔇 Voice off' : '🔊 Voice on'} onPress={() => setMuted(!muted)} />
             {isLeader && trip.destination && (
               <Button small variant="secondary" title="New route" busy={routeBusy} onPress={calculateRoute} />
             )}

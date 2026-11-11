@@ -6,7 +6,7 @@
  * The fake cars are chosen to show every map state:
  *   - "Nikos"  fast, out in front
  *   - "Maria"  steady, in the middle
- *   - "Giorgos" loses signal from 15 s to 60 s (real time) → after CONFIG.offlineAfterMs he is
+ *   - "Giorgos" loses signal from 15 s to 75 s (real time) → after CONFIG.offlineAfterMs he is
  *               drawn faded at a predicted position, then snaps back when "online" again
  *   - "Eleni"  slower → gradually falls behind
  * They exist only on your screen; nothing is sent to anyone.
@@ -38,7 +38,7 @@ export type SimCar = {
 export const SIM_CARS: SimCar[] = [
   { id: 'sim-nikos', name: 'Nikos', colour: '#1E88E5', kmh: 105, startOffsetM: 1500 },
   { id: 'sim-maria', name: 'Maria', colour: '#8E24AA', kmh: 100, startOffsetM: 800 },
-  { id: 'sim-giorgos', name: 'Giorgos', colour: '#43A047', kmh: 98, startOffsetM: 300, offline: [15, 60] },
+  { id: 'sim-giorgos', name: 'Giorgos', colour: '#43A047', kmh: 98, startOffsetM: 300, offline: [15, 75] },
   { id: 'sim-eleni', name: 'Eleni', colour: '#F9A825', kmh: 80, startOffsetM: -200 },
 ];
 

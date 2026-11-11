@@ -26,6 +26,24 @@ export type CarEstimate = {
 };
 
 /**
+ * Move a position forward along the route by speed × age (capped at CONFIG.maxPredictionMs).
+ * Unchanged if there is no route, no speed, or the car is off the route.
+ * Used to compare cars "at the same moment" even when their fixes are a few seconds apart.
+ */
+export function advanceAlongRoute(
+  pos: LatLng,
+  speed: number | null,
+  ageMs: number,
+  route: LatLng[],
+  cum: number[] = cumulativeDistances(route),
+): LatLng {
+  if (route.length < 2 || !speed || speed <= 0 || ageMs <= 0) return pos;
+  const proj = projectOnRoute(pos, route, cum);
+  if (proj.offsetMeters > CONFIG.behind.offRouteMeters) return pos;
+  return pointAlongRoute(route, proj.alongMeters + speed * (Math.min(ageMs, CONFIG.maxPredictionMs) / 1000), cum);
+}
+
+/**
  * Estimate where a car is right now.
  * @param fix   last real position received
  * @param route shared trip route (may be empty → no prediction possible, return last fix)
