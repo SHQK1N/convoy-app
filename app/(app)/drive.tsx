@@ -29,6 +29,7 @@ import { useVoiceMuted } from '../../src/state/voice';
 import { useButtonLimits } from '../../src/state/useButtonLimits';
 import { NavBanner } from '../../src/components/NavBanner';
 import { useNavigation } from '../../src/state/useNavigation';
+import { useFollowBearing } from '../../src/state/useFollowBearing';
 import { useConvoy } from '../../src/state/useConvoy';
 import { AlertBanners } from '../../src/components/AlertBanners';
 import { DEFAULT_TRIP_SETTINGS } from '../../src/config';
@@ -56,9 +57,12 @@ export default function Drive() {
   const { cars, route, trackingNote, myFix, sendEvent } = useConvoy(trip, me, simulate, (e) => onEventRef.current(e));
   // Follow me: camera stays on my car. Dragging the map or "Fit all" turns it off.
   const [following, setFollowing] = useState(true);
+  // Heading up: while following, the map turns so my driving direction points up (🧭 toggles).
+  const [headingUp, setHeadingUp] = useState(true);
   const myCar = cars.find((car) => car.isMe);
   // Turn-by-turn for my car (replaces Google Maps): next turn, voice prompts, join-the-route leg.
   const nav = useNavigation(trip?.route, myCar);
+  const bearing = useFollowBearing(myCar, headingUp);
   const { alerts, dismiss, notify, snoozeCar } = useAlerts(cars, route, trip?.settings ?? DEFAULT_TRIP_SETTINGS, !!trip?.halt);
   const limits = useButtonLimits();
   onEventRef.current = (e) => {
@@ -135,7 +139,8 @@ export default function Drive() {
   }
 
   const r = trip.route;
-  const routeText = r ? `${Math.round(r.distanceM / 1000)} km · ${Math.floor(r.durationS / 3600)} h ${Math.round((r.durationS % 3600) / 60)} min` : null;
+  // The WHOLE route (what's left for me is in the green nav banner).
+  const routeText = r ? `Route: ${Math.round(r.distanceM / 1000)} km total · ${Math.floor(r.durationS / 3600)} h ${Math.round((r.durationS % 3600) / 60)} min` : null;
 
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
@@ -147,6 +152,7 @@ export default function Drive() {
         stop={trip.halt?.stop ?? null}
         joinLine={nav.joinLine}
         follow={following && myCar ? myCar.position : null}
+        followBearing={following ? bearing : null}
         onUserMove={() => setFollowing(false)}
       />
 
@@ -228,6 +234,7 @@ export default function Drive() {
               <Button small title="Follow me" onPress={() => setFollowing(true)} />
             )}
             <Button small variant="secondary" title={muted ? '🔇 Voice off' : '🔊 Voice on'} onPress={() => setMuted(!muted)} />
+            <Button small variant="secondary" title={headingUp ? '🧭 Heading up' : '🧭 North up'} onPress={() => setHeadingUp(!headingUp)} />
             {isLeader && trip.destination && (
               <Button small variant="secondary" title="New route" busy={routeBusy} onPress={calculateRoute} />
             )}

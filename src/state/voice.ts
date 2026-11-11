@@ -7,7 +7,10 @@
 import * as Speech from 'expo-speech';
 import { useSyncExternalStore } from 'react';
 
-let muted = false;
+import { Platform } from 'react-native';
+
+/** Web testing: open any page with ?mute=1 to start with the voice off (used for automated checks). */
+let muted = Platform.OS === 'web' && typeof window !== 'undefined' && /[?&]mute=1\b/.test(window.location.search);
 const listeners = new Set<() => void>();
 
 export function speak(text: string) {

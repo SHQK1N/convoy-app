@@ -14,8 +14,9 @@
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <!-- Web map styles (copy of node_modules/leaflet/dist — update the copy if leaflet is upgraded) -->
-    <link rel="stylesheet" href="/leaflet/leaflet.css" />
+    <!-- Web map: MapLibre GL JS prebuilt (copied by scripts/copy-web-libs.js; bundling breaks its worker) -->
+    <link rel="stylesheet" href="/maplibre/maplibre-gl.css" />
+    <script src="/maplibre/maplibre-gl.js"></script>
     <title>Convoy</title>
     <style id="expo-reset">
       html,

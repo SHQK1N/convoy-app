@@ -112,6 +112,7 @@ export function useConvoy(
         colour: m.profile.colour,
         position: est.position,
         speed: fix.speed,
+        heading: fix.heading,
         predicted: est.predicted,
         ageMs: est.ageMs,
         isMe: m.profile.id === me,
@@ -121,7 +122,7 @@ export function useConvoy(
       if (f.userId === me) continue;
       const car = SIM_CARS.find((c) => c.id === f.userId)!;
       const est = estimateCar(f, route, now, cum);
-      out.push({ id: f.userId, name: car.name, colour: car.colour, position: est.position, speed: f.speed, predicted: est.predicted, ageMs: est.ageMs, isMe: false });
+      out.push({ id: f.userId, name: car.name, colour: car.colour, position: est.position, speed: f.speed, heading: f.heading, predicted: est.predicted, ageMs: est.ageMs, isMe: false });
     }
     return out;
   }, [trip, me, now, route, cum, simStart]);

@@ -8,7 +8,7 @@ Product rules live in [SPEC.md](SPEC.md).
 | Layer | Choice | Why |
 |---|---|---|
 | App | **Expo (React Native) + TypeScript**, Expo Router | One codebase for iOS + Android; builds in the cloud (no Mac needed) |
-| Map | **react-native-maps** | Apple Maps on iOS, Google Maps on Android — both free for mobile apps |
+| Map | **MapLibre** (phones: @maplibre/maplibre-react-native, web: maplibre-gl 5) + **OpenFreeMap** tiles | Free, no API key, same look on phone and web, map can turn with the driving direction |
 | Backend | **Supabase** (Postgres + Auth + Realtime) | Accounts, friends, trips and live positions in one free-tier service |
 | Live positions | Supabase **Realtime Broadcast** on a channel per trip | Positions are sent car-to-car, not written to the database every second (cheap) |
 | Online status | Supabase **Realtime Presence** | Knows instantly who dropped out |
@@ -78,7 +78,7 @@ Rule of thumb: **logic goes in `src/lib`** (easy to test and change), screens st
 |---|---|
 | Supabase free tier (500 MB DB, 200 realtime connections) | €0 |
 | OpenRouteService free key | €0 |
-| Google Maps Android SDK | €0 (mobile SDK has no per-load charge) |
+| Map tiles (OpenFreeMap) | €0, no key |
 | Expo EAS Build free tier (cloud builds) | €0 (limited builds/month) |
 | **Apple Developer Program** — needed to install on friends' iPhones (TestFlight) | **$99 / year** |
 | Google Play Console — needed only for Play Store release (testing via APK is free) | $25 once |

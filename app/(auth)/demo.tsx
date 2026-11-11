@@ -28,6 +28,7 @@ import { useHalt } from '../../src/state/useHalt';
 import { useVoiceMuted } from '../../src/state/voice';
 import { NavBanner } from '../../src/components/NavBanner';
 import { useNavigation } from '../../src/state/useNavigation';
+import { useFollowBearing } from '../../src/state/useFollowBearing';
 import type { StoredRoute } from '../../src/services/route';
 import { useButtonLimits } from '../../src/state/useButtonLimits';
 
@@ -47,6 +48,8 @@ export default function Demo() {
   const [now, setNow] = useState(Date.now());
   const [fitKey, setFitKey] = useState(0);
   const [following, setFollowing] = useState(true);
+  // Heading up: while following, the map turns so my driving direction points up (🧭 toggles).
+  const [headingUp, setHeadingUp] = useState(true);
   const [halt, setHalt] = useState<Halt | null>(null);
   const [speedup, setSpeedup] = useState(10);
   const [muted, setMuted] = useVoiceMuted();
@@ -79,7 +82,7 @@ export default function Demo() {
     return sim.current.step(now, halt ? halt.stop.alongM : null).map((f) => {
       const car = CARS.find((x) => x.id === f.userId)!;
       const est = estimateCar(f, route, now, cum);
-      return { id: f.userId, name: car.name, colour: car.colour, position: est.position, speed: f.speed, predicted: est.predicted, ageMs: est.ageMs, isMe: f.userId === ME.id };
+      return { id: f.userId, name: car.name, colour: car.colour, position: est.position, speed: f.speed, heading: f.heading, predicted: est.predicted, ageMs: est.ageMs, isMe: f.userId === ME.id };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, route, cum]);
@@ -87,6 +90,7 @@ export default function Demo() {
   const { alerts, dismiss, notify } = useAlerts(cars, route, DEFAULT_TRIP_SETTINGS, !!halt);
   const limits = useButtonLimits();
   const nav = useNavigation(stored, cars.find((x) => x.isMe));
+  const bearing = useFollowBearing(cars.find((x) => x.isMe), headingUp);
   const brk = useHalt({ halt, saveHalt: async (h) => setHalt(h), cars, route, me: { id: ME.id, name: 'You' }, notify });
 
   return (
@@ -98,6 +102,7 @@ export default function Demo() {
         fitKey={fitKey}
         stop={halt?.stop ?? null}
         follow={following ? cars.find((x) => x.isMe)?.position ?? null : null}
+        followBearing={following ? bearing : null}
         onUserMove={() => setFollowing(false)}
       />
       <SafeAreaView edges={['top']} style={{ position: 'absolute', top: 0, left: 0, right: 0 }} pointerEvents="box-none">
@@ -152,6 +157,7 @@ export default function Demo() {
             )}
             <Button small variant="secondary" title="Restart" onPress={() => { setHalt(null); setStartedAt(Date.now()); setFollowing(true); }} />
             <Button small variant="secondary" title={muted ? '🔇 Voice off' : '🔊 Voice on'} onPress={() => setMuted(!muted)} />
+            <Button small variant="secondary" title={headingUp ? '🧭 Heading up' : '🧭 North up'} onPress={() => setHeadingUp(!headingUp)} />
             <Button small variant="secondary" title={`⏩ ${speedup}×`} onPress={() => setSpeedup(SPEEDS[(SPEEDS.indexOf(speedup) + 1) % SPEEDS.length])} />
           </View>
         </View>

@@ -1,15 +1,25 @@
 /**
- * Trip map for PHONES (react-native-maps). Web version: TripMap.web.tsx.
- * Draws: route line, destination pin, every car as a coloured dot with the name above it.
- * Offline cars (predicted position) are faded and say "last seen …".
+ * Trip map for PHONES (MapLibre Native + OpenFreeMap — free, no API key). Web version: TripMap.web.tsx.
+ * Draws: route line, my dashed "join the route" leg, destination, break stop, and every car as a
+ * coloured dot with the name above it. Offline cars (predicted position) are faded.
  *
- * Android needs GOOGLE_MAPS_ANDROID_KEY (docs/SETUP.md §3) and a development build.
+ * Needs a development build (MapLibre is native code, not in Expo Go).
+ * Camera: "Follow me" eases continuously (linear 1 s moves that chain, matching the ~1 s position
+ * updates) and can turn the map to the driving direction (followBearing).
  */
+import { Camera, type CameraRef, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useColours, useIsDark } from '../theme';
-import { ageLabel, boundsOf, FOLLOW_ZOOM, MapCar, TripMapProps } from './types';
+import { ageLabel, boundsOf, FOLLOW_ZOOM, MAP_STYLE, MapCar, TripMapProps } from './types';
+
+const GLIDE_MS = 1000;
+
+const lineGeo = (pts: { lat: number; lng: number }[]): GeoJSON.Feature => ({
+  type: 'Feature',
+  properties: {},
+  geometry: { type: 'LineString', coordinates: pts.map((p) => [p.lng, p.lat]) },
+});
 
 function CarDot({ car }: { car: MapCar }) {
   const c = useColours();
@@ -29,85 +39,76 @@ function CarDot({ car }: { car: MapCar }) {
 export default function TripMap(props: TripMapProps) {
   const c = useColours();
   const dark = useIsDark();
-  const map = useRef<MapView>(null);
-
-  // Follow me: keep my car centred (street-level zoom the first time).
+  const camera = useRef<CameraRef>(null);
   const zoomedIn = useRef(false);
+
+  // Follow me (+ heading up).
   useEffect(() => {
-    if (!map.current || !props.follow) {
+    if (!camera.current || !props.follow) {
       zoomedIn.current = false;
       return;
     }
-    const center = { latitude: props.follow.lat, longitude: props.follow.lng };
-    map.current.animateCamera(zoomedIn.current ? { center } : { center, zoom: FOLLOW_ZOOM }, { duration: 800 });
+    const first = !zoomedIn.current;
     zoomedIn.current = true;
-  }, [props.follow?.lat, props.follow?.lng]);
+    camera.current.easeTo({
+      center: [props.follow.lng, props.follow.lat],
+      ...(first ? { zoom: FOLLOW_ZOOM } : {}),
+      bearing: props.followBearing ?? 0,
+      padding: { top: 260, bottom: 120, left: 0, right: 0 },
+      duration: first ? 800 : GLIDE_MS,
+      easing: first ? 'ease' : 'linear',
+    });
+  }, [props.follow?.lat, props.follow?.lng, props.followBearing]);
 
-  // Zoom to fit when asked (fitKey changes) or when the route first arrives (not while following).
+  // Fit all on request, or when the route first arrives (not while following).
   useEffect(() => {
+    if (props.follow) return;
     const b = boundsOf(props);
-    if (!b || !map.current || (props.follow && props.fitKey === 0)) return;
-    map.current.fitToCoordinates(
-      [
-        { latitude: b.minLat, longitude: b.minLng },
-        { latitude: b.maxLat, longitude: b.maxLng },
-      ],
-      { edgePadding: { top: 120, right: 60, bottom: 220, left: 60 }, animated: true },
-    );
+    if (!b || !camera.current) return;
+    camera.current.fitBounds([b.minLng, b.minLat, b.maxLng, b.maxLat], {
+      padding: { top: 220, bottom: 280, left: 40, right: 40 },
+      bearing: 0,
+      duration: 800,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.fitKey, props.route.length > 0]);
 
   return (
-    <MapView
-      ref={map}
+    <Map
       style={StyleSheet.absoluteFill}
-      userInterfaceStyle={dark ? 'dark' : 'light'}
-      showsCompass={false}
-      toolbarEnabled={false}
-      onPanDrag={() => props.onUserMove?.()}
+      mapStyle={dark ? MAP_STYLE.dark : MAP_STYLE.light}
+      logo={false}
+      compass={false}
+      attribution
+      onRegionWillChange={(e) => e.nativeEvent.userInteraction && props.onUserMove?.()}
     >
-      {props.route.length > 1 && (
-        <Polyline
-          coordinates={props.route.map((p) => ({ latitude: p.lat, longitude: p.lng }))}
-          strokeColor={c.brand}
-          strokeWidth={6}
-        />
-      )}
-      {props.joinLine && props.joinLine.length > 1 && (
-        <Polyline
-          coordinates={props.joinLine.map((p) => ({ latitude: p.lat, longitude: p.lng }))}
-          strokeColor="#1E88E5"
-          strokeWidth={5}
-          lineDashPattern={[8, 10]}
-        />
-      )}
+      <Camera ref={camera} initialViewState={{ center: [23.7, 38.0], zoom: 7 }} />
+
+      <GeoJSONSource id="route" data={lineGeo(props.route)}>
+        <Layer id="route-line" type="line" layout={{ 'line-join': 'round', 'line-cap': 'round' }} paint={{ 'line-color': c.brand, 'line-width': 7, 'line-opacity': 0.9 }} />
+      </GeoJSONSource>
+      <GeoJSONSource id="join" data={lineGeo(props.joinLine ?? [])}>
+        <Layer id="join-line" type="line" paint={{ 'line-color': '#1E88E5', 'line-width': 5, 'line-dasharray': [1.5, 1.5] }} />
+      </GeoJSONSource>
+
       {props.destination && (
-        <Marker
-          coordinate={{ latitude: props.destination.lat, longitude: props.destination.lng }}
-          title={props.destination.label}
-          pinColor={c.brand}
-        />
+        <Marker id="destination" lngLat={[props.destination.lng, props.destination.lat]}>
+          <View style={[styles.dest, { backgroundColor: c.brand }]} />
+        </Marker>
       )}
       {props.stop && (
-        <Marker coordinate={{ latitude: props.stop.lat, longitude: props.stop.lng }} title={props.stop.label} anchor={{ x: 0.5, y: 0.5 }} zIndex={20}>
+        <Marker id="stop" lngLat={[props.stop.lng, props.stop.lat]}>
           <View style={[styles.stop, { borderColor: c.brand }]}>
             <Text style={{ fontSize: 17 }}>🛑</Text>
           </View>
         </Marker>
       )}
       {props.cars.map((car) => (
-        <Marker
-          key={car.id}
-          coordinate={{ latitude: car.position.lat, longitude: car.position.lng }}
-          anchor={{ x: 0.5, y: 1 }}
-          // Redrawing custom markers is expensive; only while the label text can change.
-          tracksViewChanges={car.predicted}
-          zIndex={car.isMe ? 10 : 1}
-        >
+        <Marker key={car.id} id={`car-${car.id}`} lngLat={[car.position.lng, car.position.lat]} anchor="bottom">
           <CarDot car={car} />
         </Marker>
       ))}
-    </MapView>
+    </Map>
   );
 }
 
@@ -115,5 +116,6 @@ const styles = StyleSheet.create({
   label: { borderWidth: 2, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 3, maxWidth: 160 },
   labelText: { fontSize: 13, fontWeight: '700' },
   dot: { width: 22, height: 22, borderRadius: 11, borderWidth: 3, borderColor: '#FFFFFF' },
+  dest: { width: 18, height: 18, borderRadius: 9, borderWidth: 3, borderColor: '#FFFFFF' },
   stop: { width: 34, height: 34, borderRadius: 17, borderWidth: 4, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
 });

@@ -17,12 +17,10 @@ Things only the owner can do (accounts, keys). Do them once.
 1. Sign up at openrouteservice.org → Dashboard → create a token.
 2. Put it in `.env` as `EXPO_PUBLIC_ORS_KEY`.
 
-## 3. Google Maps key (Android map) — free for mobile
+## 3. Maps — nothing to do
 
-1. Google Cloud Console → new project → enable **Maps SDK for Android** → create an API key.
-2. Restrict it to Android apps (package name `app.convoy.dev` from `app.json`).
-3. Put it in `.env` as `GOOGLE_MAPS_ANDROID_KEY` (read by `app.config.ts` at build time).
-   Without it the Android map is blank. iPhone uses Apple Maps and needs no key.
+The map is MapLibre with OpenFreeMap tiles: free, no key, no card. (Google Maps would need a billing account.)
+Web test page: MapLibre's browser files are copied into `public/maplibre/` automatically after `npm install`.
 
 ## 4. Expo account (cloud builds) — free
 
@@ -47,4 +45,5 @@ Push does **not** work in Expo Go on Android, or on web — the app just skips i
 - **Android dev build:** `npx eas-cli build --profile development --platform android` → install the APK link on each phone.
 - **iPhone dev build:** needs the Apple Developer Program ($99/year). Then
   `npx eas-cli build --profile development --platform ios` and invite testers.
-- Background location does **not** work in Expo Go — the live-map milestones need the development build.
+- The map, background location and push do **not** work in Expo Go — use the development build
+  (`eas.json` has a `development` profile that makes an installable APK).

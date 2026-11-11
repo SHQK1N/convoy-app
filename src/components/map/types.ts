@@ -13,6 +13,8 @@ export type MapCar = {
   position: LatLng;
   /** last known speed, m/s (null if unknown) — used by the left-behind time rule */
   speed: number | null;
+  /** driving direction, degrees from north (null if unknown) — used to turn the map ("heading up") */
+  heading: number | null;
   /** true = no live signal; position is an estimate → drawn faded */
   predicted: boolean;
   /** how old the last real position is, ms */
@@ -34,7 +36,22 @@ export type TripMapProps = {
   follow: LatLng | null;
   /** Called when the user drags the map themselves (the screen then turns Follow off). */
   onUserMove?: () => void;
+  /** While following: turn the map so my driving direction points up (degrees), or null = north up. */
+  followBearing?: number | null;
 };
+
+/**
+ * Map look: OpenFreeMap (free, no key, no sign-up — https://openfreemap.org), OpenStreetMap data.
+ * Same styles on phones (MapLibre Native) and web (MapLibre GL JS).
+ */
+export const MAP_STYLE = {
+  light: 'https://tiles.openfreemap.org/styles/liberty',
+  // "fiord": dark blue-grey with clearly visible roads ("dark" was too low-contrast at night).
+  dark: 'https://tiles.openfreemap.org/styles/fiord',
+};
+
+/** Smooth the heading so the map doesn't twitch on GPS noise: ignore changes under this, degrees. */
+export const HEADING_DEADBAND = 8;
 
 /** Zoom used when following a car: streets readable, a few km visible. */
 export const FOLLOW_ZOOM = 14;

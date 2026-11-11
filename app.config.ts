@@ -1,16 +1,20 @@
 /**
- * Dynamic app config. Everything static lives in app.json; this file only adds values
- * that come from .env (secrets) and the native permissions for location.
- * Expo reads app.json first and passes it in as `config`.
+ * Dynamic app config. Everything static lives in app.json; this file adds native setup that
+ * needs code or .env values. Expo reads app.json first and passes it in as `config`.
+ *
+ * Maps: MapLibre + OpenFreeMap — free, no API key (no Google Maps key needed).
  */
 import type { ConfigContext, ExpoConfig } from 'expo/config';
+import fs from 'fs';
+
+/** Firebase file for Android push notifications (docs/SETUP.md §5). Added only when present. */
+const GOOGLE_SERVICES = './google-services.json';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...(config as ExpoConfig),
   android: {
     ...config.android,
-    // Google Maps SDK key for the Android map (docs/SETUP.md §3). Not needed on iPhone (Apple Maps).
-    config: { ...config.android?.config, googleMaps: { apiKey: process.env.GOOGLE_MAPS_ANDROID_KEY ?? '' } },
+    ...(fs.existsSync(GOOGLE_SERVICES) ? { googleServicesFile: GOOGLE_SERVICES } : {}),
   },
   ios: {
     ...config.ios,
@@ -19,6 +23,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     ...(config.plugins ?? []),
+    // The map (native code: needs a development build, not Expo Go).
+    '@maplibre/maplibre-react-native',
     [
       'expo-location',
       {

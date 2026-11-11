@@ -17,7 +17,7 @@ alert for all, and a one-tap **Halt** tells the whole group to pull over at the 
 - `src/services/` — talks to the outside world: `supabase.ts` client, `auth.ts`, `friends.ts`, `trips.ts`,
   `geocode.ts` (place search), `push.ts` (push notification registration), `route.ts` (driving route),
   `live.ts` (live positions channel), `location.ts` (GPS, incl. background).
-- `src/components/map/` — the map: `TripMap.tsx` (phones, react-native-maps) and `TripMap.web.tsx` (browser, Leaflet).
+- `src/components/map/` — the map: `TripMap.tsx` (phones, MapLibre Native) and `TripMap.web.tsx` (browser, MapLibre GL JS). Free OpenFreeMap tiles, no key.
 - `src/lib/simulate.ts` — fake convoy for testing (used by the map demo and the "Test convoy" button).
 - `src/lib/alerts.ts` + `src/state/useAlerts.ts` + `src/components/AlertBanners.tsx` — when to alert, what to say,
   how it looks. Thresholds live in `src/config.ts` (`behind`, `alerts`).
@@ -39,7 +39,8 @@ alert for all, and a one-tap **Halt** tells the whole group to pull over at the 
   - `(app)/add-friend.tsx` — search users and send friend requests.
   - `(app)/drive.tsx` — the live map for the current trip.
   - `(auth)/demo.tsx` — map demo with a simulated convoy (development only, no account needed).
-- `app.config.ts` — adds the Google Maps key (from .env) and location permissions to app.json.
+- `app.config.ts` — adds MapLibre, location permissions and (if present) google-services.json to app.json.
+- `eas.json` — cloud build profiles (`development` = installable Android APK for testing).
 - `public/` — web-only files (page template, favicon). `scripts/make_icons.py` — regenerates all icons.
 
 ## Commands
